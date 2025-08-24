@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read/write their own profile
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
+    }
+
+    // Leagues
+    match /leagues/{leagueId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+
+      // Participants
+      match /participants/{userId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == userId;
+      }
+    }
+
+    // Games (read-only for all, write only by admin later)
+    match /games/{gameId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.admin == true;
+    }
+  }
+}

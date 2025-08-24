@@ -4,13 +4,16 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  updateProfile,
   type User,
 } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { AuthContext } from "./useAuth";
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -20,19 +23,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  const signup = async (email: string, password: string) => {
+  // ✅ Updated signup
+  const signup = async (
+    email: string,
+    password: string,
+    displayName?: string
+  ): Promise<User> => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+    // Update displayName in Firebase Auth
+    if (displayName) {
+      await updateProfile(cred.user, { displayName });
+    }
+
+    // Create Firestore profile
     await setDoc(doc(db, "profiles", cred.user.uid), {
       email: cred.user.email,
+      displayName: displayName || null,
       createdAt: new Date().toISOString(),
     });
+
+    return cred.user;
   };
 
-  const login = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+  const login = async (email: string, password: string): Promise<User> => {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    return cred.user;
   };
 
   const logout = () => signOut(auth);
 
-  return <AuthContext.Provider value={{ user, signup, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, signup, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
