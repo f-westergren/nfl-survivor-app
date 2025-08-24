@@ -30,7 +30,7 @@ jobs:
 
       # Step 5: Deploy to Firebase Hosting
       - name: Deploy to Firebase
-        uses: FirebaseExtended/action-hosting-deploy@v1
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}" # GitHub automatically provides this
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
