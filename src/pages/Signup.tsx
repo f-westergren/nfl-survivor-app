@@ -7,19 +7,23 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [name, setName] = useState("");
   const { signup } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const user = await signup(email, password, displayName); // returns User
-      await createUser(user.uid, user.email!, displayName); // Firestore helper
+      const user = await signup(email, password, name); // returns User
+      await createUser(user.uid, user.email!, name); // Firestore helper
       navigate("/dashboard");
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      setError("Signup failed");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Signup failed");
+      }
     }
   };
 
@@ -44,8 +48,8 @@ export default function Signup() {
         />
         <input
           type="text"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           placeholder="Display Name"
           className="border p-2 w-full mb-2"
         />
