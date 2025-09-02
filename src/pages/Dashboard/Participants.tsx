@@ -22,7 +22,7 @@ export default function Participants({
         const data = doc.data();
         users[doc.id] = {
           uid: doc.id,
-          name: data.name || data.email,
+          displayName: data.displayName || data.email,
           eliminated: data.eliminated || false,
         };
       });
@@ -61,7 +61,7 @@ export default function Participants({
               p.eliminated ? "text-gray-400" : ""
             }`}
           >
-            <span>{p.name}</span>
+            <span>{p.displayName}</span>
             <span>
               {p.eliminated
                 ? "Eliminated"

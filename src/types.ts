@@ -16,7 +16,7 @@ export interface Week {
 
 export interface Participant {
   uid: string;
-  name: string;
+  displayName: string;
   eliminated: boolean;
   pick?: string;
 }

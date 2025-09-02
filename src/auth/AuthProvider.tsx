@@ -27,19 +27,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const signup = async (
     email: string,
     password: string,
-    name?: string
+    displayName?: string
   ): Promise<User> => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
 
-    // Update name in Firebase Auth
-    if (name) {
-      await updateProfile(cred.user, { name });
+    // Update displayName in Firebase Auth
+    if (displayName) {
+      await updateProfile(cred.user, { displayName });
     }
 
     // Create Firestore profile
     await setDoc(doc(db, "profiles", cred.user.uid), {
       email: cred.user.email,
-      name: name || null,
+      displayName: displayName || null,
       createdAt: new Date().toISOString(),
     });
 

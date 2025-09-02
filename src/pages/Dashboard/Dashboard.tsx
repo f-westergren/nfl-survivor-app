@@ -88,7 +88,7 @@ export default function Dashboard() {
         const data = doc.data();
         participantsData.push({
           uid: doc.id,
-          name: data.displayName || data.email,
+          displayName: data.displayName || data.email,
           eliminated: !(data.active ?? true),
         });
       });
