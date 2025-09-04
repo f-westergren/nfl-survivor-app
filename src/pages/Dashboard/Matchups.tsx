@@ -7,15 +7,10 @@ interface MatchupsProps {
   weekName: string; // e.g., "week1"
 }
 
-const days = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+const options: Intl.DateTimeFormatOptions = {
+  weekday: "long",
+  timeZone: "America/New_York",
+};
 
 const Matchups: React.FC<MatchupsProps> = ({ games, weekName }) => {
   if (!games || games.length === 0) return <p>No matchups available.</p>;
@@ -27,7 +22,7 @@ const Matchups: React.FC<MatchupsProps> = ({ games, weekName }) => {
         {games.map((game, idx) => (
           <li key={idx}>
             {game.away} @ {game.home} —{" "}
-            {days[new Date(game.startTime).getDay()]}
+            {new Date(game.startTime).toLocaleString("en-US", options)}
           </li>
         ))}
       </ul>
