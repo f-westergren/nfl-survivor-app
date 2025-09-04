@@ -28,37 +28,55 @@ export default function Signup() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center">
-      <form onSubmit={handleSubmit} className="p-6 border rounded-lg shadow-md">
-        <h2 className="text-xl mb-4">Sign Up</h2>
-        {error && <p className="text-red-500">{error}</p>}
+    <div className="relative flex h-screen items-center justify-center">
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: "url('/images/football.jpg')",
+          filter: "grayscale(100%)",
+        }}
+      />
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/50" />
+
+      {/* Foreground content */}
+      <form
+        onSubmit={handleSubmit}
+        className="relative z-10 bg-white p-6 border rounded-lg shadow-md max-w-lg w-full"
+      >
+        <h2 className="text-xl font-bold mb-4">Sign Up</h2>
+        {error && <p className="text-red-500 mb-2">{error}</p>}
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
-          className="border p-2 w-full mb-2"
+          className="border p-2 w-full mb-2 rounded"
         />
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
-          className="border p-2 w-full mb-2"
+          className="border p-2 w-full mb-2 rounded"
         />
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Display Name"
-          className="border p-2 w-full mb-2"
+          className="border p-2 w-full mb-4 rounded"
         />
-        <button className="bg-green-500 text-white px-4 py-2 rounded w-full">
+        <button
+          type="submit"
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full"
+        >
           Sign Up
         </button>
-        <p className="mt-2">
+        <p className="mt-4 text-center">
           Already have an account?{" "}
-          <Link to="/login" className="text-blue-500">
+          <Link to="/login" className="text-blue-600 hover:underline">
             Login
           </Link>
         </p>

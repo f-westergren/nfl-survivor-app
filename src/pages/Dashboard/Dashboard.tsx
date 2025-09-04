@@ -51,7 +51,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [currentWeek, setCurrentWeek] = useState<Week | null>(null);
   const [matchups, setMatchups] = useState<Game[]>([]);
-  const [weekPicks, setWeekPicks] = useState<Record<string, string>>({}); // userID => pick
+  const [weekPicks, setWeekPicks] = useState<Record<string, string>>({});
   const [selectedTeam, setSelectedTeam] = useState("");
   const [saving, setSaving] = useState(false);
   const [isDeadlinePassed, setIsDeadlinePassed] = useState(false);
@@ -62,8 +62,6 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       setLoading(true);
-
-      // 1. Get all weeks and determine current week
       const weeksSnap = await getDocs(collection(db, "weeks"));
       const weeks: Week[] = weeksSnap.docs
         .map((doc) => doc.data() as Week)
@@ -81,7 +79,6 @@ export default function Dashboard() {
       setCurrentWeek(selectedWeek);
       setMatchups(selectedWeek.games || []);
 
-      // 2. Fetch all participants
       const usersSnap = await getDocs(collection(db, "users"));
       const participantsData: Participant[] = [];
       usersSnap.forEach((doc) => {
@@ -93,38 +90,39 @@ export default function Dashboard() {
         });
       });
 
-      // 3. Fetch all picks for this week
-      const picksSnap = await getDocs(
-        query(
-          collection(db, "picks"),
-          where("week", "==", parseInt(selectedWeek.week))
-        )
+      const allPicksSnap = await getDocs(
+        query(collection(db, "picks"), where("userId", "==", user?.uid || ""))
       );
 
-      const picksMap: Record<string, string> = {};
-      picksSnap.forEach((doc) => {
+      const pastPicks: string[] = [];
+      let currentPick = "";
+      allPicksSnap.forEach((doc) => {
         const data = doc.data();
-        picksMap[data.userId] = data.pick;
-        if (user?.uid === data.userId) {
-          setSelectedTeam(data.pick);
-        }
+        if (data.week !== parseInt(selectedWeek.week))
+          pastPicks.push(data.pick);
+        else currentPick = data.pick;
       });
-      setWeekPicks(picksMap);
 
-      // 4. Deadline
+      setWeekPicks(
+        pastPicks.reduce((acc, pick) => ({ ...acc, [pick]: true }), {})
+      );
+      setSelectedTeam(currentPick);
+
       const kickoff = new Date(selectedWeek.firstGameStartTime);
       const deadline = new Date(kickoff.getTime() - 10 * 60 * 1000);
       setIsDeadlinePassed(today >= deadline);
+
       setLoading(false);
     };
 
     fetchData();
   }, [user]);
 
+  const disableTeam = (team: string) => !!weekPicks[team];
+
   const handleSavePick = async () => {
     if (!user || !selectedTeam || !currentWeek) return;
 
-    // Calculate kickoff and deadline
     const kickoff = new Date(currentWeek.firstGameStartTime);
     const deadline = new Date(kickoff.getTime() - 10 * 60 * 1000);
 
@@ -161,65 +159,63 @@ export default function Dashboard() {
 
   if (loading || !currentWeek) return <div>Loading...</div>;
 
-  // Disable already-picked teams by current user
-  // Teams the current user has picked in *previous* weeks
-  const userPastPicks = Object.entries(weekPicks)
-    .filter(([uid]) => uid === user?.uid) // only current user
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    .map(([_, team]) => team);
-
-  // Disable if team was picked before this week
-  const disableTeam = (team: string) => {
-    return userPastPicks.includes(team);
-  };
-
   return (
-    <div className="min-h-screen p-6 bg-gray-100">
-      <header className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">NFL Survivor Pool</h1>
-        <p className="text-gray-600">Welcome, {user?.email}</p>
-      </header>
+    <div className="relative min-h-screen">
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: "url('/images/football-field.jpg')",
+        }}
+      />
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/50" />
 
-      <div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
-        {/* Pick dropdown */}
-        <section className="flex-1 bg-white p-6 rounded-xl shadow space-y-3">
-          <h2 className="text-xl font-semibold">
-            Pick your team for {currentWeek.week}
-          </h2>
-          <select
-            value={selectedTeam}
-            onChange={(e) => setSelectedTeam(e.target.value)}
-            className="w-full border rounded p-2 mb-2 pr-8"
-          >
-            <option value="">Select a team</option>
-            {allTeams.map((team) => (
-              <option key={team} value={team} disabled={disableTeam(team)}>
-                {team}
-              </option>
-            ))}
-          </select>
+      {/* Foreground content */}
+      <div className="relative z-10 p-6">
+        <header className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-white">NFL Survivor Pool</h1>
+          <p className="text-gray-200">Welcome, {user?.email}</p>
+        </header>
 
-          <button
-            onClick={handleSavePick}
-            disabled={!selectedTeam || saving || isDeadlinePassed}
-            className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
-          >
-            {isDeadlinePassed
-              ? "Deadline Passed"
-              : saving
-              ? "Saving..."
-              : "Save Pick"}
-          </button>
-        </section>
+        <div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
+          <section className="flex-1 bg-white p-6 rounded-xl shadow space-y-3">
+            <h2 className="text-xl font-semibold">
+              Pick your team for {currentWeek.week}
+            </h2>
+            <select
+              value={selectedTeam}
+              onChange={(e) => setSelectedTeam(e.target.value)}
+              className="w-full border rounded p-2 mb-2 pr-8"
+            >
+              <option value="">Select a team</option>
+              {allTeams.map((team) => (
+                <option key={team} value={team} disabled={disableTeam(team)}>
+                  {team}
+                </option>
+              ))}
+            </select>
 
-        {/* Matchups */}
-        <Matchups games={matchups} weekName={currentWeek.week} />
+            <button
+              onClick={handleSavePick}
+              disabled={!selectedTeam || saving || isDeadlinePassed}
+              className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
+            >
+              {isDeadlinePassed
+                ? "Deadline Passed"
+                : saving
+                ? "Saving..."
+                : "Save Pick"}
+            </button>
+          </section>
 
-        {/* Participants */}
-        <Participants
-          currentWeek={currentWeek.week}
-          currentUserId={user?.uid}
-        />
+          <Matchups games={matchups} weekName={currentWeek.week} />
+
+          <Participants
+            currentWeek={currentWeek.week}
+            currentUserId={user?.uid}
+          />
+        </div>
       </div>
     </div>
   );

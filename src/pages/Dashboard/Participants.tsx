@@ -57,7 +57,7 @@ export default function Participants({
         {participants.map((p) => (
           <li
             key={p.uid}
-            className={`flex justify-between items-center p- rounded ${
+            className={`flex justify-between items-center p-2 rounded ${
               p.eliminated ? "text-gray-400" : ""
             }`}
           >
