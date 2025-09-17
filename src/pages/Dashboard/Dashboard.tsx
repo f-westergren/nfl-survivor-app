@@ -66,25 +66,20 @@ export default function Dashboard() {
 			const weeksSnap = await getDocs(collection(db, "weeks"));
 			const weeks: Week[] = weeksSnap.docs
 				.map((doc) => doc.data() as Week)
-				// sort by earliest start (Firestore Timestamp -> Date)
+				// Sort weeks chronologically by firstGameStartTime
 				.sort(
 					(a, b) =>
 						a.firstGameStartTime.toDate().getTime() -
 						b.firstGameStartTime.toDate().getTime()
 				);
 
-			const getLastGameStartMs = (week: Week) =>
-				Math.max(
-					...(week.games ?? []).map((g) =>
-						g.startTime.toDate().getTime()
-					)
-				);
+			const now = today.getTime();
 
-			const now = Date.now();
-
+			// Find the current week: now <= lastGameEndTime
 			let selectedWeek =
-				weeks.find((w) => now <= getLastGameStartMs(w)) ??
-				weeks[weeks.length - 1];
+				weeks.find(
+					(w) => now <= w.lastGameEndTime.toDate().getTime()
+				) ?? weeks[weeks.length - 1];
 
 			setCurrentWeek(selectedWeek);
 			setMatchups(selectedWeek.games || []);
