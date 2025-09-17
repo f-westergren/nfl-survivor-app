@@ -2,221 +2,247 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../auth/useAuth";
 import { db } from "../../firebase";
 import {
-  collection,
-  getDocs,
-  query,
-  where,
-  doc,
-  setDoc,
+	collection,
+	getDocs,
+	query,
+	where,
+	doc,
+	setDoc,
 } from "firebase/firestore";
 import Matchups from "./Matchups";
 import Participants from "./Participants";
 import type { Week, Game, Participant } from "../../types";
 
 const allTeams = [
-  "Cardinals",
-  "Falcons",
-  "Ravens",
-  "Bills",
-  "Panthers",
-  "Bears",
-  "Bengals",
-  "Browns",
-  "Cowboys",
-  "Broncos",
-  "Lions",
-  "Packers",
-  "Texans",
-  "Colts",
-  "Jaguars",
-  "Chiefs",
-  "Raiders",
-  "Chargers",
-  "Rams",
-  "Dolphins",
-  "Vikings",
-  "Patriots",
-  "Saints",
-  "Giants",
-  "Jets",
-  "Eagles",
-  "Steelers",
-  "Seahawks",
-  "Buccaneers",
-  "Titans",
-  "Commanders",
+	"Cardinals",
+	"Falcons",
+	"Ravens",
+	"Bills",
+	"Panthers",
+	"Bears",
+	"Bengals",
+	"Browns",
+	"Cowboys",
+	"Broncos",
+	"Lions",
+	"Packers",
+	"Texans",
+	"Colts",
+	"Jaguars",
+	"Chiefs",
+	"Raiders",
+	"Chargers",
+	"Rams",
+	"Dolphins",
+	"Vikings",
+	"Patriots",
+	"Saints",
+	"Giants",
+	"Jets",
+	"Eagles",
+	"Steelers",
+	"Seahawks",
+	"Buccaneers",
+	"Titans",
+	"Commanders",
 ];
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  const [currentWeek, setCurrentWeek] = useState<Week | null>(null);
-  const [matchups, setMatchups] = useState<Game[]>([]);
-  const [weekPicks, setWeekPicks] = useState<Record<string, string>>({});
-  const [selectedTeam, setSelectedTeam] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [isDeadlinePassed, setIsDeadlinePassed] = useState(false);
-  const [loading, setLoading] = useState(true);
+	const { user } = useAuth();
+	const [currentWeek, setCurrentWeek] = useState<Week | null>(null);
+	const [matchups, setMatchups] = useState<Game[]>([]);
+	const [weekPicks, setWeekPicks] = useState<Record<string, string>>({});
+	const [selectedTeam, setSelectedTeam] = useState("");
+	const [saving, setSaving] = useState(false);
+	const [isDeadlinePassed, setIsDeadlinePassed] = useState(false);
+	const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const today = new Date();
+	useEffect(() => {
+		const today = new Date();
 
-    const fetchData = async () => {
-      setLoading(true);
-      const weeksSnap = await getDocs(collection(db, "weeks"));
-      const weeks: Week[] = weeksSnap.docs
-        .map((doc) => doc.data() as Week)
-        .sort(
-          (a, b) =>
-            new Date(a.firstGameStartTime).getTime() -
-            new Date(b.firstGameStartTime).getTime()
-        );
+		const fetchData = async () => {
+			setLoading(true);
 
-      let selectedWeek = weeks[0];
-      for (const week of weeks) {
-        if (new Date(week.firstGameStartTime) <= today) selectedWeek = week;
-        else break;
-      }
-      setCurrentWeek(selectedWeek);
-      setMatchups(selectedWeek.games || []);
+			const weeksSnap = await getDocs(collection(db, "weeks"));
+			const weeks: Week[] = weeksSnap.docs
+				.map((doc) => doc.data() as Week)
+				// keep sorting by the earliest start so weeks are chronological
+				.sort(
+					(a, b) =>
+						new Date(a.firstGameStartTime).getTime() -
+						new Date(b.firstGameStartTime).getTime()
+				);
 
-      const usersSnap = await getDocs(collection(db, "users"));
-      const participantsData: Participant[] = [];
-      usersSnap.forEach((doc) => {
-        const data = doc.data();
-        participantsData.push({
-          uid: doc.id,
-          displayName: data.displayName || data.email,
-          eliminated: !(data.active ?? true),
-        });
-      });
+			const getLastGameStartMs = (week: Week) =>
+				Math.max(
+					...(week.games ?? []).map((g) =>
+						new Date(g.startTime).getTime()
+					)
+				);
 
-      const allPicksSnap = await getDocs(
-        query(collection(db, "picks"), where("userId", "==", user?.uid || ""))
-      );
+			const now = Date.now();
 
-      const pastPicks: string[] = [];
-      let currentPick = "";
-      allPicksSnap.forEach((doc) => {
-        const data = doc.data();
-        if (data.week !== parseInt(selectedWeek.week))
-          pastPicks.push(data.pick);
-        else currentPick = data.pick;
-      });
+			let selectedWeek =
+				weeks.find((w) => now <= getLastGameStartMs(w)) ??
+				weeks[weeks.length - 1];
 
-      setWeekPicks(
-        pastPicks.reduce((acc, pick) => ({ ...acc, [pick]: true }), {})
-      );
-      setSelectedTeam(currentPick);
+			setCurrentWeek(selectedWeek);
+			setMatchups(selectedWeek.games || []);
 
-      const kickoff = new Date(selectedWeek.firstGameStartTime);
-      const deadline = new Date(kickoff.getTime() - 10 * 60 * 1000);
-      setIsDeadlinePassed(today >= deadline);
+			// ... rest of your code unchanged:
+			const usersSnap = await getDocs(collection(db, "users"));
+			const participantsData: Participant[] = [];
+			usersSnap.forEach((doc) => {
+				const data = doc.data();
+				participantsData.push({
+					uid: doc.id,
+					displayName: data.displayName || data.email,
+					eliminated: !(data.active ?? true),
+				});
+			});
 
-      setLoading(false);
-    };
+			const allPicksSnap = await getDocs(
+				query(
+					collection(db, "picks"),
+					where("userId", "==", user?.uid || "")
+				)
+			);
 
-    fetchData();
-  }, [user]);
+			const pastPicks: string[] = [];
+			let currentPick = "";
+			allPicksSnap.forEach((doc) => {
+				const data = doc.data();
+				if (data.week !== parseInt(selectedWeek.week))
+					pastPicks.push(data.pick);
+				else currentPick = data.pick;
+			});
 
-  const disableTeam = (team: string) => !!weekPicks[team];
+			setWeekPicks(
+				pastPicks.reduce((acc, pick) => ({ ...acc, [pick]: true }), {})
+			);
+			setSelectedTeam(currentPick);
 
-  const handleSavePick = async () => {
-    if (!user || !selectedTeam || !currentWeek) return;
+			const kickoff = new Date(selectedWeek.firstGameStartTime);
+			const deadline = new Date(kickoff.getTime() - 10 * 60 * 1000);
+			setIsDeadlinePassed(today >= deadline);
 
-    const kickoff = new Date(currentWeek.firstGameStartTime);
-    const deadline = new Date(kickoff.getTime() - 10 * 60 * 1000);
+			setLoading(false);
+		};
 
-    if (new Date() >= deadline) {
-      alert("Deadline has passed for this week. You cannot change your pick.");
-      return;
-    }
+		fetchData();
+	}, [user]);
 
-    setSaving(true);
+	const disableTeam = (team: string) => !!weekPicks[team];
 
-    try {
-      const pickId = `${user.uid}_week${currentWeek.week}`;
-      const pickRef = doc(db, "picks", pickId);
+	const handleSavePick = async () => {
+		if (!user || !selectedTeam || !currentWeek) return;
 
-      await setDoc(
-        pickRef,
-        {
-          userId: user.uid,
-          week: currentWeek.week,
-          pick: selectedTeam,
-          status: "pending",
-        },
-        { merge: true }
-      );
+		const kickoff = new Date(currentWeek.firstGameStartTime);
+		const deadline = new Date(kickoff.getTime() - 10 * 60 * 1000);
 
-      alert(`✅ Pick saved: ${selectedTeam} for week ${currentWeek.week}`);
-    } catch (err) {
-      console.error("Error saving pick", err);
-      alert("❌ Failed to save pick, try again");
-    } finally {
-      setSaving(false);
-    }
-  };
+		if (new Date() >= deadline) {
+			alert(
+				"Deadline has passed for this week. You cannot change your pick."
+			);
+			return;
+		}
 
-  if (loading || !currentWeek) return <div>Loading...</div>;
+		setSaving(true);
 
-  return (
-    <div className="relative min-h-screen">
-      {/* Background image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: "url('/images/football-field.jpg')",
-        }}
-      />
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/50" />
+		try {
+			const pickId = `${user.uid}_week${currentWeek.week}`;
+			const pickRef = doc(db, "picks", pickId);
 
-      {/* Foreground content */}
-      <div className="relative z-10 p-6">
-        <header className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-white">NFL Survivor Pool</h1>
-          <p className="text-gray-200">Welcome, {user?.email}</p>
-        </header>
+			await setDoc(
+				pickRef,
+				{
+					userId: user.uid,
+					week: currentWeek.week,
+					pick: selectedTeam,
+					status: "pending",
+				},
+				{ merge: true }
+			);
 
-        <div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
-          <section className="flex-1 bg-white p-6 rounded-xl shadow space-y-3">
-            <h2 className="text-xl font-semibold">
-              Pick your team for {currentWeek.week}
-            </h2>
-            <select
-              value={selectedTeam}
-              onChange={(e) => setSelectedTeam(e.target.value)}
-              className="w-full border rounded p-2 mb-2 pr-8"
-            >
-              <option value="">Select a team</option>
-              {allTeams.map((team) => (
-                <option key={team} value={team} disabled={disableTeam(team)}>
-                  {team}
-                </option>
-              ))}
-            </select>
+			alert(
+				`✅ Pick saved: ${selectedTeam} for week ${currentWeek.week}`
+			);
+		} catch (err) {
+			console.error("Error saving pick", err);
+			alert("❌ Failed to save pick, try again");
+		} finally {
+			setSaving(false);
+		}
+	};
 
-            <button
-              onClick={handleSavePick}
-              disabled={!selectedTeam || saving || isDeadlinePassed}
-              className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
-            >
-              {isDeadlinePassed
-                ? "Deadline Passed"
-                : saving
-                ? "Saving..."
-                : "Save Pick"}
-            </button>
-          </section>
+	if (loading || !currentWeek) return <div>Loading...</div>;
 
-          <Matchups games={matchups} weekName={currentWeek.week} />
+	return (
+		<div className="relative min-h-screen">
+			{/* Background image */}
+			<div
+				className="absolute inset-0 bg-cover bg-center"
+				style={{
+					backgroundImage: "url('/images/football-field.jpg')",
+				}}
+			/>
+			{/* Dark overlay */}
+			<div className="absolute inset-0 bg-black/50" />
 
-          <Participants
-            currentWeek={currentWeek.week}
-            currentUserId={user?.uid}
-          />
-        </div>
-      </div>
-    </div>
-  );
+			{/* Foreground content */}
+			<div className="relative z-10 p-6">
+				<header className="flex justify-between items-center mb-6">
+					<h1 className="text-2xl font-bold text-white">
+						NFL Survivor Pool
+					</h1>
+					<p className="text-gray-200">Welcome, {user?.email}</p>
+				</header>
+
+				<div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
+					<section className="flex-1 bg-white p-6 rounded-xl shadow space-y-3">
+						<h2 className="text-xl font-semibold">
+							Pick your team for {currentWeek.week}
+						</h2>
+						<select
+							value={selectedTeam}
+							onChange={(e) => setSelectedTeam(e.target.value)}
+							className="w-full border rounded p-2 mb-2 pr-8"
+						>
+							<option value="">Select a team</option>
+							{allTeams.map((team) => (
+								<option
+									key={team}
+									value={team}
+									disabled={disableTeam(team)}
+								>
+									{team}
+								</option>
+							))}
+						</select>
+
+						<button
+							onClick={handleSavePick}
+							disabled={
+								!selectedTeam || saving || isDeadlinePassed
+							}
+							className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
+						>
+							{isDeadlinePassed
+								? "Deadline Passed"
+								: saving
+								? "Saving..."
+								: "Save Pick"}
+						</button>
+					</section>
+
+					<Matchups games={matchups} weekName={currentWeek.week} />
+
+					<Participants
+						currentWeek={currentWeek.week}
+						currentUserId={user?.uid}
+					/>
+				</div>
+			</div>
+		</div>
+	);
 }
