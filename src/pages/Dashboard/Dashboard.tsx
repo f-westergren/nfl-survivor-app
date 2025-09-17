@@ -198,7 +198,7 @@ export default function Dashboard() {
 				<div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
 					<section className="flex-1 bg-white p-6 rounded-xl shadow space-y-3">
 						<h2 className="text-xl font-semibold">
-							Pick your team for {currentWeek.week}
+							Pick your team for week {currentWeek.week}
 						</h2>
 						<select
 							value={selectedTeam}

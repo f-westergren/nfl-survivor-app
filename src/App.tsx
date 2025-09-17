@@ -7,23 +7,23 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import Home from "./pages/Home";
 
 export default function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/" element={<Home />} />
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          />
-        </Routes>
-      </Router>
-    </AuthProvider>
-  );
+	return (
+		<AuthProvider>
+			<Router>
+				<Routes>
+					<Route path="/login" element={<Login />} />
+					{/* <Route path="/signup" element={<Signup />} /> */}
+					<Route path="/" element={<Home />} />
+					<Route
+						path="/dashboard"
+						element={
+							<PrivateRoute>
+								<Dashboard />
+							</PrivateRoute>
+						}
+					/>
+				</Routes>
+			</Router>
+		</AuthProvider>
+	);
 }
