@@ -66,17 +66,17 @@ export default function Dashboard() {
 			const weeksSnap = await getDocs(collection(db, "weeks"));
 			const weeks: Week[] = weeksSnap.docs
 				.map((doc) => doc.data() as Week)
-				// keep sorting by the earliest start so weeks are chronological
+				// sort by earliest start (Firestore Timestamp -> Date)
 				.sort(
 					(a, b) =>
-						new Date(a.firstGameStartTime).getTime() -
-						new Date(b.firstGameStartTime).getTime()
+						a.firstGameStartTime.toDate().getTime() -
+						b.firstGameStartTime.toDate().getTime()
 				);
 
 			const getLastGameStartMs = (week: Week) =>
 				Math.max(
 					...(week.games ?? []).map((g) =>
-						new Date(g.startTime).getTime()
+						g.startTime.toDate().getTime()
 					)
 				);
 
@@ -89,7 +89,7 @@ export default function Dashboard() {
 			setCurrentWeek(selectedWeek);
 			setMatchups(selectedWeek.games || []);
 
-			// ... rest of your code unchanged:
+			// --- Users ---
 			const usersSnap = await getDocs(collection(db, "users"));
 			const participantsData: Participant[] = [];
 			usersSnap.forEach((doc) => {
@@ -101,6 +101,7 @@ export default function Dashboard() {
 				});
 			});
 
+			// --- Picks ---
 			const allPicksSnap = await getDocs(
 				query(
 					collection(db, "picks"),
@@ -122,7 +123,8 @@ export default function Dashboard() {
 			);
 			setSelectedTeam(currentPick);
 
-			const kickoff = new Date(selectedWeek.firstGameStartTime);
+			// --- Deadline calculation ---
+			const kickoff = selectedWeek.firstGameStartTime.toDate();
 			const deadline = new Date(kickoff.getTime() - 10 * 60 * 1000);
 			setIsDeadlinePassed(today >= deadline);
 
