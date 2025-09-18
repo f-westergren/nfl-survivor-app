@@ -6,11 +6,13 @@ import type { Participant } from "../../types";
 interface ParticipantsProps {
   currentWeek: string;
   currentUserId?: string;
+  isDeadlinePassed: boolean;
 }
 
 export default function Participants({
   currentWeek,
   currentUserId,
+  isDeadlinePassed,
 }: ParticipantsProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
 
@@ -52,7 +54,10 @@ export default function Participants({
 
   return (
     <div className="bg-white p-6 rounded-xl shadow flex-1">
-      <h2 className="text-xl font-semibold mb-4">Participants</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold mb-4">Participans</h2>
+        <h2 className="text-xl font-semibold mb-4">{`Week ${currentWeek} Pick`}</h2>
+      </div>
       <ul className="space-y-2">
         {participants.map((p) => (
           <li
@@ -62,13 +67,19 @@ export default function Participants({
             }`}
           >
             <span>{p.displayName}</span>
-            <span>
-              {p.eliminated
-                ? "Eliminated"
-                : p.uid === currentUserId
-                ? p.pick || "(no pick yet)"
-                : "-"}
-            </span>
+            {isDeadlinePassed ? (
+              <span>{p.pick || "(no pick yet)"}</span>
+            ) : (
+              <span>
+                {p.eliminated
+                  ? "Eliminated"
+                  : p.uid === currentUserId
+                  ? p.pick || "(no pick yet)"
+                  : p.pick
+                  ? "✔️"
+                  : "⏳"}
+              </span>
+            )}
           </li>
         ))}
       </ul>
