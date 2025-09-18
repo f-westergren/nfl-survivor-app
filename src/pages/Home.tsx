@@ -26,12 +26,12 @@ export default function Home() {
 					>
 						Go to Login
 					</Link>
-					{/* <Link
+					<Link
             to="/signup"
             className="block bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium"
           >
             Sign Up
-          </Link> */}
+          </Link>
 				</div>
 			</div>
 		</div>
