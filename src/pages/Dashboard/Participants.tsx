@@ -65,10 +65,8 @@ export default function Participants({
             <span>
               {p.eliminated
                 ? "Eliminated"
-                : p.pick
-                ? p.pick
                 : p.uid === currentUserId
-                ? "(no pick yet)"
+                ? p.pick || "(no pick yet)"
                 : "-"}
             </span>
           </li>
