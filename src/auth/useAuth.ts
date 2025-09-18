@@ -6,6 +6,7 @@ export interface AuthContextType {
   signup: (email: string, password: string, name?: string) => Promise<User>;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
+  loading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(
