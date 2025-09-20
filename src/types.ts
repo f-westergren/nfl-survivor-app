@@ -1,23 +1,23 @@
-// types.ts
+import { Timestamp } from "firebase-admin/firestore";
+
 export interface Game {
-	home: string;
-	away: string;
-	winner: string | null;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	startTime: any; // Firestore Timestamp or Date string
+  home: string;
+  away: string;
+  winner: string | null;
+  startTime: Timestamp;
 }
 
 export interface Week {
-	week: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	firstGameStartTime: any;
-	lastGameEndTime: any;
-	games: Game[];
+  week: string;
+  firstGameStartTime: Timestamp;
+  lastGameEndTime: Timestamp;
+  games: Game[];
 }
 
 export interface Participant {
-	uid: string;
-	displayName: string;
-	eliminated: boolean;
-	pick?: string;
+  uid: string;
+  displayName: string;
+  pick?: string;
+  eliminated: boolean;
+  eliminatedWeek: number;
 }

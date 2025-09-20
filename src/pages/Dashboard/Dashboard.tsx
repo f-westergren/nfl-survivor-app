@@ -11,41 +11,7 @@ import {
 } from "firebase/firestore";
 import Matchups from "./Matchups";
 import Participants from "./Participants";
-import type { Week, Game, Participant } from "../../types";
-
-const allTeams = [
-  "Cardinals",
-  "Falcons",
-  "Ravens",
-  "Bills",
-  "Panthers",
-  "Bears",
-  "Bengals",
-  "Browns",
-  "Cowboys",
-  "Broncos",
-  "Lions",
-  "Packers",
-  "Texans",
-  "Colts",
-  "Jaguars",
-  "Chiefs",
-  "Raiders",
-  "Chargers",
-  "Rams",
-  "Dolphins",
-  "Vikings",
-  "Patriots",
-  "Saints",
-  "Giants",
-  "Jets",
-  "Eagles",
-  "Steelers",
-  "Seahawks",
-  "Buccaneers",
-  "Titans",
-  "Commanders",
-];
+import type { Week, Game } from "../../types";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -56,6 +22,8 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [isDeadlinePassed, setIsDeadlinePassed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [eliminatedWeek, setEliminatedWeek] = useState(0);
+  const [teams, setTeams] = useState<string[]>([]);
 
   useEffect(() => {
     const today = new Date();
@@ -80,19 +48,26 @@ export default function Dashboard() {
         weeks.find((w) => now <= w.lastGameEndTime.toDate().getTime()) ??
         weeks[weeks.length - 1];
 
+      const selectedWeekTeams = selectedWeek.games.reduce<string[]>(
+        (teams, game) => {
+          teams.push(game.home, game.away);
+          return teams;
+        },
+        []
+      );
+
+      setTeams(selectedWeekTeams);
       setCurrentWeek(selectedWeek);
       setMatchups(selectedWeek.games || []);
 
-      // --- Users ---
+      // // --- Users ---
       const usersSnap = await getDocs(collection(db, "users"));
-      const participantsData: Participant[] = [];
+
       usersSnap.forEach((doc) => {
         const data = doc.data();
-        participantsData.push({
-          uid: doc.id,
-          displayName: data.displayName || data.email,
-          eliminated: !(data.active ?? true),
-        });
+        if (doc.id === user?.uid && data.eliminatedWeek !== 0) {
+          setEliminatedWeek(data.eliminatedWeek);
+        }
       });
 
       // --- Picks ---
@@ -130,7 +105,7 @@ export default function Dashboard() {
   const handleSavePick = async () => {
     if (!user || !selectedTeam || !currentWeek) return;
 
-    const kickoff = new Date(currentWeek.firstGameStartTime);
+    const kickoff = currentWeek.firstGameStartTime.toDate();
     const deadline = new Date(kickoff.getTime() - 10 * 60 * 1000);
 
     if (new Date() >= deadline) {
@@ -187,33 +162,46 @@ export default function Dashboard() {
 
         <div className="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
           <section className="flex-1 bg-white p-6 rounded-xl shadow space-y-3">
-            <h2 className="text-xl font-semibold">
-              Pick your team for week {currentWeek.week}
-            </h2>
-            <select
-              value={selectedTeam}
-              onChange={(e) => setSelectedTeam(e.target.value)}
-              className="w-full border rounded p-2 mb-2 pr-8"
-            >
-              <option value="">Select a team</option>
-              {allTeams.map((team) => (
-                <option key={team} value={team} disabled={disableTeam(team)}>
-                  {team}
-                </option>
-              ))}
-            </select>
+            {eliminatedWeek === 0 ? (
+              <>
+                <h2 className="text-xl font-semibold">
+                  Pick your team for week {currentWeek.week}
+                </h2>
+                <select
+                  value={selectedTeam}
+                  onChange={(e) => setSelectedTeam(e.target.value)}
+                  className="w-full border rounded p-2 mb-2 pr-8"
+                >
+                  <option value="">Select a team</option>
+                  {teams.map((team) => (
+                    <option
+                      key={team}
+                      value={team}
+                      disabled={disableTeam(team)}
+                    >
+                      {team}
+                    </option>
+                  ))}
+                </select>
 
-            <button
-              onClick={handleSavePick}
-              disabled={!selectedTeam || saving || isDeadlinePassed}
-              className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
-            >
-              {isDeadlinePassed
-                ? "Deadline Passed"
-                : saving
-                ? "Saving..."
-                : "Save Pick"}
-            </button>
+                <button
+                  onClick={handleSavePick}
+                  disabled={!selectedTeam || saving || isDeadlinePassed}
+                  className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
+                >
+                  {isDeadlinePassed
+                    ? "Deadline Passed"
+                    : saving
+                    ? "Saving..."
+                    : "Save Pick"}
+                </button>
+              </>
+            ) : (
+              <h2 className="text-xl font-semibold justify-center text-center text-gray-400">
+                {`Sorry, you were eliminated week ${eliminatedWeek}, better
+                luck next time!`}
+              </h2>
+            )}
           </section>
 
           <Matchups games={matchups} weekName={currentWeek.week} />

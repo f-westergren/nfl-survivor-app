@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Import function triggers from their respective submodules:
  *
@@ -12,6 +13,7 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as dotenv from "dotenv";
 import fetch from "node-fetch";
+import { Response as ExpressResponse } from "express";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -38,78 +40,91 @@ dotenv.config();
 admin.initializeApp();
 const db = admin.firestore();
 
-export const updateWeekResults = functions.https.onRequest(async (req, res) => {
-	try {
-		// ---- Security check ----
-		const key = req.query.key || req.headers["x-scheduler-key"];
-		if (key !== process.env.SCHEDULER_KEY) {
-			res.status(403).send("Forbidden: Invalid key");
-		}
+export const updateWeekResults = functions.https.onRequest(
+  async (req: functions.https.Request, res: ExpressResponse): Promise<void> => {
+    try {
+      // ---- Security check ----
+      const key = req.query.key || req.headers["x-scheduler-key"];
+      if (key !== process.env.SCHEDULER_KEY) {
+        res.status(403).send("Forbidden: Invalid key");
+        return;
+      }
 
-		console.log("Authorized scheduler request");
+      console.log("Authorized scheduler request");
 
-		const now = admin.firestore.Timestamp.now();
+      const now = admin.firestore.Timestamp.now();
 
-		const weeksSnap = await db
-			.collection("weeks")
-			.where("lastGameEndTime", "<=", now)
-			.where("resultsUpdated", "==", false)
-			.get();
+      const weeksSnap = await db
+        .collection("weeks")
+        .where("lastGameEndTime", "<=", now)
+        .where("resultsUpdated", "==", false)
+        .get();
 
-		if (weeksSnap.empty) {
-			console.log("No weeks to process.");
-			res.status(200).send("No weeks to process.");
-			return; // stop execution
-		}
+      if (weeksSnap.empty) {
+        console.log("No weeks to process.");
+        res.status(200).send("No weeks to process.");
+        return;
+      }
 
-		for (const weekDoc of weeksSnap.docs) {
-			const weekData = weekDoc.data();
-			const weekNumber = weekData.week;
+      for (const weekDoc of weeksSnap.docs) {
+        const weekData = weekDoc.data();
+        const weekNumber = weekData.week;
 
-			console.log(`Processing week ${weekNumber}...`);
+        console.log(`Processing week ${weekNumber}...`);
 
-			const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${weekNumber}`;
-			const resp = await fetch(espnUrl);
-			const data = await resp.json();
+        // --- Get winning teams from ESPN API ---
+        const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${weekNumber}`;
+        const resp = await fetch(espnUrl);
+        const data = await resp.json();
 
-			const winningTeams = data.events
-				.map((event: any) => {
-					const comp = event.competitions[0].competitors.find(
-						(c: any) => c.winner
-					);
-					return comp ? comp.team.shortDisplayName : null;
-				})
-				.filter(Boolean);
+        const winningTeams: string[] = data.events
+          .map((event: any) => {
+            const comp = event.competitions[0].competitors.find(
+              (c: any) => c.winner
+            );
+            return comp ? comp.team.shortDisplayName : null;
+          })
+          .filter(Boolean);
 
-			await weekDoc.ref.update({
-				winningTeams,
-				resultsUpdated: true,
-				updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-			});
+        // Mark week as updated so it won't re-process
+        await weekDoc.ref.update({
+          winningTeams,
+          resultsUpdated: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
-			const picksSnap = await db
-				.collection("picks")
-				.where("week", "==", weekNumber)
-				.get();
+        // --- Find picks that lost ---
+        const picksSnap = await db
+          .collection("picks")
+          .where("week", "==", weekNumber)
+          .get();
 
-			const batch = db.batch();
-			picksSnap.forEach((pickDoc) => {
-				const pickData = pickDoc.data();
-				const status = winningTeams.includes(pickData.pick)
-					? "win"
-					: "loss";
-				batch.update(pickDoc.ref, { status });
-			});
+        const batch = db.batch();
+        const eliminatedUserIds = new Set<string>();
 
-			await batch.commit();
-			console.log(`Week ${weekNumber} picks updated.`);
-		}
+        picksSnap.forEach((pickDoc) => {
+          const pickData = pickDoc.data();
+          // If the user's pick is NOT in winningTeams, user is eliminated
+          if (!winningTeams.includes(pickData.pick)) {
+            eliminatedUserIds.add(pickData.userId);
+          }
+        });
 
-		res.status(200).send("Week results updated successfully.");
-		return; // <-- ensures the async function resolves to void
-	} catch (err) {
-		console.error("Error updating week results:", err);
-		res.status(500).send("Error updating week results");
-		return; // <-- ensures the async function resolves to void
-	}
-});
+        // --- Update each eliminated user document ---
+        for (const userId of eliminatedUserIds) {
+          const userRef = db.collection("users").doc(userId);
+          // Use set with merge to avoid overwriting other fields
+          batch.set(userRef, { eliminatedWeek: weekNumber }, { merge: true });
+        }
+
+        await batch.commit();
+        console.log(`Week ${weekNumber} eliminated users updated.`);
+      }
+
+      res.status(200).send("Week results processed and users updated.");
+    } catch (err) {
+      console.error("Error updating week results:", err);
+      res.status(500).send("Error updating week results");
+    }
+  }
+);

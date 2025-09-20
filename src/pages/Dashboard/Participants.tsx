@@ -17,35 +17,37 @@ export default function Participants({
   const [participants, setParticipants] = useState<Participant[]>([]);
 
   useEffect(() => {
-    // Subscribe to all users
     const unsubUsers = onSnapshot(collection(db, "users"), (userSnap) => {
       const users: Record<string, Participant> = {};
+
       userSnap.forEach((doc) => {
         const data = doc.data();
+        const eliminatedWeek = data.eliminatedWeek ?? null;
+
         users[doc.id] = {
           uid: doc.id,
           displayName: data.displayName || data.email,
-          eliminated: data.eliminated || false,
+          eliminated: eliminatedWeek !== 0,
+          eliminatedWeek,
         };
       });
 
-      // Subscribe to picks for current week
       const picksQuery = query(
         collection(db, "picks"),
         where("week", "==", currentWeek)
       );
+
       const unsubPicks = onSnapshot(picksQuery, (picksSnap) => {
-        const updatedParticipants = Object.values(users).map((p) => {
-          const pickDoc = picksSnap.docs.find((d) => d.data().userId === p.uid);
+        const merged = Object.values(users).map((u) => {
+          const pickDoc = picksSnap.docs.find((d) => d.data().userId === u.uid);
           return {
-            ...p,
+            ...u,
             pick: pickDoc ? pickDoc.data().pick : undefined,
           };
         });
-        setParticipants(updatedParticipants);
+        setParticipants(merged);
       });
 
-      // Cleanup nested listener
       return () => unsubPicks();
     });
 
@@ -54,25 +56,37 @@ export default function Participants({
 
   return (
     <div className="bg-white p-6 rounded-xl shadow flex-1">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold mb-4">Participans</h2>
-        <h2 className="text-xl font-semibold mb-4">{`Week ${currentWeek} Pick`}</h2>
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-xl font-semibold mb-4">Participant</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          {`Week ${currentWeek} Pick`}
+        </h2>
       </div>
       <ul className="space-y-2">
         {participants.map((p) => (
           <li
             key={p.uid}
-            className={`flex justify-between items-center p-2 rounded ${
+            className={`flex justify-between items-center p-1 rounded ${
               p.eliminated ? "text-gray-400" : ""
             }`}
           >
-            <span>{p.displayName}</span>
+            <span>
+              {p.displayName}
+              {p.eliminatedWeek !== 0 && (
+                <span className="ml-2 text-sm text-gray-400"></span>
+              )}
+            </span>
+
             {isDeadlinePassed ? (
-              <span>{p.pick || "(no pick yet)"}</span>
+              <span>
+                {p.eliminated
+                  ? `Eliminated (W${p.eliminatedWeek})`
+                  : p.pick || "(no pick)"}
+              </span>
             ) : (
               <span>
                 {p.eliminated
-                  ? "Eliminated"
+                  ? `Eliminated (W${p.eliminatedWeek})`
                   : p.uid === currentUserId
                   ? p.pick || "(no pick yet)"
                   : p.pick
