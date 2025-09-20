@@ -1,10 +1,9 @@
-// components/Matchups.tsx
 import React from "react";
 import { type Game } from "../../types";
 
 interface MatchupsProps {
   games: Game[];
-  weekName: string; // e.g., "week1"
+  weekName: string;
 }
 
 const options: Intl.DateTimeFormatOptions = {
