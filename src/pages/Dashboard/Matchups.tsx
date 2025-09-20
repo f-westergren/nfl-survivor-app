@@ -21,7 +21,7 @@ const Matchups: React.FC<MatchupsProps> = ({ games, weekName }) => {
         {games.map((game, idx) => (
           <li key={idx}>
             {game.away} @ {game.home} —{" "}
-            {game.startTime.toDate().toLocaleString("en-US", options)}
+            {new Date(game.startTime).toLocaleString("en-US", options)}
           </li>
         ))}
       </ul>

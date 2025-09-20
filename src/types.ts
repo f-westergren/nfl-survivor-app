@@ -4,7 +4,7 @@ export interface Game {
   home: string;
   away: string;
   winner: string | null;
-  startTime: Timestamp;
+  startTime: string;
 }
 
 export interface Week {
