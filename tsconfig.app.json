@@ -18,7 +18,11 @@
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
-		"noFallthroughCasesInSwitch": true
+		"noFallthroughCasesInSwitch": true,
+
+		/* Add these to help with complex context types */
+		"incremental": true,
+		"isolatedModules": true
 	},
 	"include": ["src"]
 }
