@@ -56,7 +56,7 @@ export default function Dashboard() {
         []
       );
 
-      setTeams(selectedWeekTeams);
+      setTeams(selectedWeekTeams.sort());
       setCurrentWeek(selectedWeek);
       setMatchups(selectedWeek.games || []);
 
