@@ -102,18 +102,40 @@ export const updateWeekResults = functions.https.onRequest(
         const batch = db.batch();
         const eliminatedUserIds = new Set<string>();
 
+        // Track users who submitted a pick this week
+        const usersWhoPicked = new Set<string>();
+
         picksSnap.forEach((pickDoc) => {
           const pickData = pickDoc.data();
-          // If the user's pick is NOT in winningTeams, user is eliminated
+          usersWhoPicked.add(pickData.userId);
+
+          // User submitted a pick but it lost
           if (!winningTeams.includes(pickData.pick)) {
             eliminatedUserIds.add(pickData.userId);
           }
         });
 
-        // --- Update each eliminated user document ---
+        // --- Fetch all users to check who is already eliminated ---
+        const usersSnap = await db.collection("users").get();
+
+        usersSnap.forEach((userDoc) => {
+          const userId = userDoc.id;
+          const userData = userDoc.data();
+
+          // Skip users already eliminated (eliminatedWeek !== 0 or defined)
+          if (userData.eliminatedWeek && userData.eliminatedWeek !== 0) {
+            return;
+          }
+
+          // If they did NOT submit a pick at all, eliminate them
+          if (!usersWhoPicked.has(userId)) {
+            eliminatedUserIds.add(userId);
+          }
+        });
+
+        // --- Update each newly eliminated user ---
         for (const userId of eliminatedUserIds) {
           const userRef = db.collection("users").doc(userId);
-          // Use set with merge to avoid overwriting other fields
           batch.set(userRef, { eliminatedWeek: weekNumber }, { merge: true });
         }
 

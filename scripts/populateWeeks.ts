@@ -39,7 +39,7 @@ async function populateWeeksFromESPN(weekNum: number) {
     })
     .filter((game: any) => {
       const day = new Date(game.startTime).getDay();
-      return day >= 0 && day <= 1; // Sunday (0) and Monday (1) only
+      return day >= 0 && day <= 2; // Sunday (0), Monday (1), and Tuesday (2) only
     });
 
   const firstSundayGame = games
